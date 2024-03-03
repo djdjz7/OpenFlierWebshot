@@ -1,11 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>net6.0-windows7.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<UseWPF>true</UseWPF>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CefSharp.OffScreen.NETCore" Version="109.1.110" />
+		<PackageReference Include="MQTTnet" Version="3.1.2" >
+			<ExcludeAssets>runtime</ExcludeAssets>
+			<Private>true</Private>
+		</PackageReference>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="System.Drawing.Common" Version="6.0.0" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<Reference Include="OpenFlier.Plugin">
@@ -13,8 +25,6 @@
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</Reference>
-
-		<PackageReference Include="Microsoft.Playwright" Version="1.29.0" />
 	</ItemGroup>
 
 </Project>
