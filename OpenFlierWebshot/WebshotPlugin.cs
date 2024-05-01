@@ -1,15 +1,11 @@
-﻿using OpenFlier.Plugin;
-using CloudRoom.MqttModule;
-using System.Drawing.Imaging;
-using System.Drawing;
-using System.Text;
-using System.Windows;
-using Newtonsoft.Json;
-using MQTTnet;
+﻿using MQTTnet;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
-using CefSharp;
-using CefSharp.OffScreen;
+using Newtonsoft.Json;
+using OpenFlier.Plugin;
+using PuppeteerSharp;
+using System.IO;
+using System.Text;
 
 namespace OpenFlierWebshot
 {
@@ -24,20 +20,12 @@ namespace OpenFlierWebshot
                 PluginIdentifier = "openflier.djdjz7.webshot",
                 PluginName = "OpenFlier Webshot",
                 PluginNeedsAdminPrivilege = false,
-                PluginNeedsConfigEntry = false,
-                PluginVersion = "1.0.0",
+                PluginNeedsConfigEntry = true,
+                PluginVersion = "2.0.0",
             };
 
         public async Task PluginMain(CommandInputPluginArgs args)
         {
-            if (!Cef.IsInitialized)
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Cef.Initialize(new CefSettings() { BackgroundColor = 0x00ffffff, Locale = "zh-CN" });
-                    ;
-                });
-            }
             var filename = Guid.NewGuid().ToString("N") + (args.UsePng ? ".png" : ".jpeg");
             var fullcmd = args.FullCommand;
             switch (args.InvokeCommand.ToLower())
@@ -94,25 +82,48 @@ namespace OpenFlierWebshot
 
         public void PluginOpenConfig()
         {
-            throw new NotImplementedException();
+            new ConfigWindow().ShowDialog();
         }
 
-        public async static Task TakeWebshot(string filename, string url, int? width = null, int? height = null)
+        public async Task TakeWebshot(string filename, string url, int? width = null, int? height = null)
         {
-
-            Bitmap WebScreenshotBitmap = await CefWebshot.TakeWebshot(url, width, height);
-            if (filename.EndsWith("png", StringComparison.OrdinalIgnoreCase))
-                WebScreenshotBitmap.Save(filename, ImageFormat.Png);
+            var path = GetBrowserPath();
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Headless = true,
+                ExecutablePath = path,
+            });
+            var page = await browser.NewPageAsync();
+            await page.GoToAsync(url, 0, new WaitUntilNavigation[] { WaitUntilNavigation.Networkidle2, WaitUntilNavigation.Load });
+            if (width != null && height != null)
+            {
+                await page.SetViewportAsync(new ViewPortOptions
+                {
+                    Width = (int)width,
+                    Height = (int)height,
+                });
+                await page.ScreenshotAsync(filename);
+            }
             else
-                WebScreenshotBitmap.Save(filename, ImageFormat.Jpeg);
+            {
+                await page.ScreenshotAsync(filename, new ScreenshotOptions { FullPage = true });
+            }
+            await browser.CloseAsync();
         }
 
         public async Task BeforeExit()
         {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                Cef.Shutdown();
-            });
+            return;
+        }
+
+        public string GetBrowserPath()
+        {
+            if (!File.Exists("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath"))
+                throw new FileNotFoundException("插件目录下未找到 browserExecutablePath 文件。");
+            string path = File.ReadAllText("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath");
+            if (!File.Exists(path))
+                throw new FileNotFoundException("browserExecutablePath 文件指向的路径不存在。");
+            return path;
         }
     }
 }
