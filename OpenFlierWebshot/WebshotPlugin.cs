@@ -11,6 +11,10 @@ namespace OpenFlierWebshot
 {
     public class WebshotPlugin : ICommandInputPlugin
     {
+        const string MSEDGE_64_PATH = "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe";
+        const string MSEDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+        const string CHROME_64_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+        const string CHROME_PATH = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
         public CommandInputPluginInfo GetPluginInfo()
             => new CommandInputPluginInfo()
             {
@@ -118,12 +122,24 @@ namespace OpenFlierWebshot
 
         public string GetBrowserPath()
         {
-            if (!File.Exists("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath"))
-                throw new FileNotFoundException("插件目录下未找到 browserExecutablePath 文件。");
-            string path = File.ReadAllText("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath");
-            if (!File.Exists(path))
-                throw new FileNotFoundException("browserExecutablePath 文件指向的路径不存在。");
-            return path;
+            if (File.Exists("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath"))
+            {
+                string path = File.ReadAllText("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath");
+                if (!File.Exists(path))
+                    throw new FileNotFoundException("browserExecutablePath 文件指向的路径不存在。");
+                return path;
+            }
+            else if (File.Exists(CHROME_64_PATH))
+                return CHROME_64_PATH;
+            else if (File.Exists(CHROME_PATH))
+                return CHROME_PATH;
+            else if (File.Exists(MSEDGE_64_PATH))
+                return MSEDGE_64_PATH;
+            else if (File.Exists(MSEDGE_PATH))
+                return MSEDGE_PATH;
+            else
+                throw new FileNotFoundException("未找到浏览器路径。请在插件目录下创建 browserExecutablePath 文件并写入浏览器路径。");
+                
         }
     }
 }
