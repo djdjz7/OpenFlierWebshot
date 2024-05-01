@@ -94,7 +94,7 @@ namespace OpenFlierWebshot
                 ExecutablePath = path,
             });
             var page = await browser.NewPageAsync();
-            await page.GoToAsync(url);
+            await page.GoToAsync(url, 0, new WaitUntilNavigation[] { WaitUntilNavigation.Networkidle2, WaitUntilNavigation.Load });
             if (width != null && height != null)
             {
                 await page.SetViewportAsync(new ViewPortOptions
