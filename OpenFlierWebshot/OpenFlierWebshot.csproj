@@ -7,6 +7,7 @@
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 		<UseWPF>true</UseWPF>
+		<OutputType>Library</OutputType>
 	</PropertyGroup>
 
 	<ItemGroup>

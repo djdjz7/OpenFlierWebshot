@@ -1,14 +1,11 @@
-﻿using OpenFlier.Plugin;
-using System.Drawing.Imaging;
-using System.Drawing;
-using System.Text;
-using System.Windows;
-using Newtonsoft.Json;
-using MQTTnet;
+﻿using MQTTnet;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
-using System.IO;
+using Newtonsoft.Json;
+using OpenFlier.Plugin;
 using PuppeteerSharp;
+using System.IO;
+using System.Text;
 
 namespace OpenFlierWebshot
 {
@@ -23,7 +20,7 @@ namespace OpenFlierWebshot
                 PluginIdentifier = "openflier.djdjz7.webshot",
                 PluginName = "OpenFlier Webshot",
                 PluginNeedsAdminPrivilege = false,
-                PluginNeedsConfigEntry = false,
+                PluginNeedsConfigEntry = true,
                 PluginVersion = "2.0.0",
             };
 
@@ -85,7 +82,7 @@ namespace OpenFlierWebshot
 
         public void PluginOpenConfig()
         {
-            throw new NotImplementedException();
+            new ConfigWindow().ShowDialog();
         }
 
         public async Task TakeWebshot(string filename, string url, int? width = null, int? height = null)
@@ -93,24 +90,30 @@ namespace OpenFlierWebshot
             var path = GetBrowserPath();
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions
             {
-                Headless = true
+                Headless = true,
+                ExecutablePath = path,
             });
             var page = await browser.NewPageAsync();
             await page.GoToAsync(url);
-            if (width is not null && height is not null)
+            if (width != null && height != null)
             {
                 await page.SetViewportAsync(new ViewPortOptions
                 {
-                    Width = width,
-                    Height = height,
+                    Width = (int)width,
+                    Height = (int)height,
                 });
+                await page.ScreenshotAsync(filename);
             }
-            await page.ScreenshotAsync(filename);
-
+            else
+            {
+                await page.ScreenshotAsync(filename, new ScreenshotOptions { FullPage = true });
+            }
+            await browser.CloseAsync();
         }
 
         public async Task BeforeExit()
         {
+            return;
         }
 
         public string GetBrowserPath()
