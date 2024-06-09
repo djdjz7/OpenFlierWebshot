@@ -12,20 +12,50 @@ namespace OpenFlierWebshot
     public class WebshotPlugin : ICommandInputPlugin
     {
         const string MSEDGE_64_PATH = "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe";
-        const string MSEDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+        const string MSEDGE_PATH =
+            "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
         const string CHROME_64_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-        const string CHROME_PATH = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
-        public CommandInputPluginInfo GetPluginInfo()
-            => new CommandInputPluginInfo()
+        const string CHROME_PATH =
+            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
+
+        public WebshotPlugin()
+        {
+            try
             {
-                InvokeCommands = new[] { "aws", "ws", "bs" },
+                string content = File.ReadAllText("Plugins\\openflier.djdjz7.webshot\\config.json");
+                var config = JsonConvert.DeserializeObject<Config>(content);
+                if (config is null)
+                    throw new Exception();
+                LocalStorage.Config = config;
+            }
+            catch
+            {
+                LocalStorage.Config = new Config()
+                {
+                    JavaScriptMatchEntries = new List<JavaScriptMatchEntry>()
+                    {
+                        new JavaScriptMatchEntry()
+                        {
+                            DomainFragment = "zhihu.com",
+                            Script =
+                                @"() => {var closeButton = document.querySelector("".Modal-closeButton""); closeButton.click();}",
+                        }
+                    },
+                };
+            }
+        }
+
+        public CommandInputPluginInfo GetPluginInfo() =>
+            new CommandInputPluginInfo()
+            {
+                InvokeCommands = new[] { "aws", "ws", "bs", "awsl", "wsl", "bsl" },
                 PluginAuthor = "djdjz7",
                 PluginDescription = "Takes a screenshot of a webpage.",
                 PluginIdentifier = "openflier.djdjz7.webshot",
                 PluginName = "OpenFlier Webshot",
                 PluginNeedsAdminPrivilege = false,
                 PluginNeedsConfigEntry = true,
-                PluginVersion = "2.0.0",
+                PluginVersion = "2.0.1",
             };
 
         public async Task PluginMain(CommandInputPluginArgs args)
@@ -40,6 +70,20 @@ namespace OpenFlierWebshot
                     else
                         await TakeWebshot($"Screenshots\\{filename}", fullcmd.Split(' ')[1]);
                     break;
+                case "wsl":
+                    if (fullcmd.Split(' ').Length == 1)
+                        await TakeWebshot(
+                            $"Screenshots\\{filename}",
+                            "https://bilibili.com",
+                            waitLonger: true
+                        );
+                    else
+                        await TakeWebshot(
+                            $"Screenshots\\{filename}",
+                            fullcmd.Split(' ')[1],
+                            waitLonger: true
+                        );
+                    break;
 
                 case "aws":
                     if (fullcmd.Split(' ').Length <= 3)
@@ -53,13 +97,63 @@ namespace OpenFlierWebshot
                         await TakeWebshot($"Screenshots\\{filename}", url, width, height);
                     }
                     break;
+                case "awsl":
+                    if (fullcmd.Split(' ').Length <= 3)
+                        throw new Exception("缺少分辨率");
+                    else
+                    {
+                        string[] cmdlist = fullcmd.Split(' ');
+                        int width = int.Parse(cmdlist[1]);
+                        int height = int.Parse(cmdlist[2]);
+                        string url = string.Join(' ', cmdlist, 3, cmdlist.Length - 3);
+                        await TakeWebshot(
+                            $"Screenshots\\{filename}",
+                            url,
+                            width,
+                            height,
+                            waitLonger: true
+                        );
+                    }
+                    break;
 
                 case "bs":
-                    if (fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 1)
-                        throw new Exception("必须输入搜素内容");
-                    string searchContent = string.Join(' ', fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries), 1, fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length - 1);
-                    await TakeWebshot($"Screenshots\\{filename}", $"https://bing.com/search?q={Uri.EscapeDataString(searchContent)}", 1920, 2400);
-                    break;
+                    {
+                        if (fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 1)
+                            throw new Exception("必须输入搜素内容");
+                        string searchContent = string.Join(
+                            ' ',
+                            fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries),
+                            1,
+                            fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length - 1
+                        );
+                        await TakeWebshot(
+                            $"Screenshots\\{filename}",
+                            $"https://bing.com/search?q={Uri.EscapeDataString(searchContent)}",
+                            1920,
+                            2400
+                        );
+                        break;
+                    }
+
+                case "bsl":
+                    {
+                        if (fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 1)
+                            throw new Exception("必须输入搜素内容");
+                        string searchContent = string.Join(
+                            ' ',
+                            fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries),
+                            1,
+                            fullcmd.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length - 1
+                        );
+                        await TakeWebshot(
+                            $"Screenshots\\{filename}",
+                            $"https://bing.com/search?q={Uri.EscapeDataString(searchContent)}",
+                            1920,
+                            2400,
+                            true
+                        );
+                        break;
+                    }
             }
 
             string payload = JsonConvert.SerializeObject(
@@ -89,23 +183,38 @@ namespace OpenFlierWebshot
             new ConfigWindow().ShowDialog();
         }
 
-        public async Task TakeWebshot(string filename, string url, int? width = null, int? height = null)
+        public async Task TakeWebshot(
+            string filename,
+            string url,
+            int? width = null,
+            int? height = null,
+            bool waitLonger = false
+        )
         {
-            var path = GetBrowserPath();
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions
-            {
-                Headless = true,
-                ExecutablePath = path,
-            });
+            var path = GetBrowserPath(LocalStorage.Config?.BrowserExecutablePath);
+            var browser = await Puppeteer.LaunchAsync(
+                new LaunchOptions
+                {
+                    Headless = true,
+                    ExecutablePath = path,
+                    Args = new[] { "--mute-audio" }
+                }
+            );
             var page = await browser.NewPageAsync();
-            await page.GoToAsync(url, 0, new WaitUntilNavigation[] { WaitUntilNavigation.Networkidle2, WaitUntilNavigation.Load });
+            var waitCondition = waitLonger
+                ? new WaitUntilNavigation[] { WaitUntilNavigation.Load }
+                : new WaitUntilNavigation[]
+                {
+                    WaitUntilNavigation.Networkidle2,
+                    WaitUntilNavigation.Load
+                };
+            await page.GoToAsync(url, 0, waitCondition);
+            await EvaluateJavaScript(page);
             if (width != null && height != null)
             {
-                await page.SetViewportAsync(new ViewPortOptions
-                {
-                    Width = (int)width,
-                    Height = (int)height,
-                });
+                await page.SetViewportAsync(
+                    new ViewPortOptions { Width = (int)width, Height = (int)height, }
+                );
                 await page.ScreenshotAsync(filename);
             }
             else
@@ -115,19 +224,39 @@ namespace OpenFlierWebshot
             await browser.CloseAsync();
         }
 
+        private async Task EvaluateJavaScript(IPage page)
+        {
+            try
+            {
+                if (LocalStorage.Config is null)
+                    throw new Exception("Runtime error: Config is null.");
+                if (LocalStorage.Config.JavaScriptMatchEntries is null)
+                    return;
+                foreach (var entry in LocalStorage.Config.JavaScriptMatchEntries)
+                {
+                    if (string.IsNullOrEmpty(entry.DomainFragment) || string.IsNullOrEmpty(entry.Script))
+                        continue;
+                    if (page.Url.ToLower().Contains(entry.DomainFragment.ToLower()))
+                    {
+                        await page.EvaluateFunctionAsync(entry.Script);
+                    }
+                }
+            }
+            catch { }
+        }
+
         public async Task BeforeExit()
         {
             return;
         }
 
-        public string GetBrowserPath()
+        public string GetBrowserPath(string? specifiedPath)
         {
-            if (File.Exists("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath"))
+            if (!string.IsNullOrEmpty(specifiedPath))
             {
-                string path = File.ReadAllText("Plugins\\openflier.djdjz7.webshot\\browserExecutablePath");
-                if (!File.Exists(path))
-                    throw new FileNotFoundException("browserExecutablePath 文件指向的路径不存在。");
-                return path;
+                if (!File.Exists(specifiedPath))
+                    throw new FileNotFoundException("BrowserExecutablePath 文件指向的路径不存在。");
+                return specifiedPath;
             }
             else if (File.Exists(CHROME_64_PATH))
                 return CHROME_64_PATH;
@@ -138,8 +267,9 @@ namespace OpenFlierWebshot
             else if (File.Exists(MSEDGE_PATH))
                 return MSEDGE_PATH;
             else
-                throw new FileNotFoundException("未找到浏览器路径。请在插件目录下创建 browserExecutablePath 文件并写入浏览器路径。");
-                
+                throw new FileNotFoundException(
+                    "未找到浏览器路径。请配置插件。"
+                );
         }
     }
 }

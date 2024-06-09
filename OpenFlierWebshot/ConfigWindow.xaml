@@ -14,12 +14,21 @@
         <TextBlock FontSize="20" Text="配置浏览器地址" />
         <TextBox
             Name="PathTextBox"
-            Width="256"
             Margin="0,8,0,0" />
+        <DataGrid
+            Name="ScriptDataGrid"
+            Margin="0,8,0,0"
+            AutoGenerateColumns="True"
+            CanUserAddRows="True"
+            CanUserDeleteRows="True"
+            CanUserReorderColumns="True"
+            CanUserResizeColumns="True"
+            CanUserSortColumns="True" />
+        
         <Button
             Margin="0,8,0,0"
             HorizontalAlignment="Right"
             Click="Button_Click"
-            Content="保存" />
+            Content="应用" />
     </StackPanel>
 </Window>
